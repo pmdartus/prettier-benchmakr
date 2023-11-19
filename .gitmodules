@@ -1,0 +1,16 @@
+[submodule "fixtures/vue"]
+	path = fixtures/vue
+	url = git@github.com:vuejs/core.git
+	shallow = true
+[submodule "fixtures/babel"]
+	path = fixtures/babel
+	url = git@github.com:babel/babel.git
+	shallow = true
+[submodule "fixtures/next.js"]
+	path = fixtures/next.js
+	url = git@github.com:vercel/next.js.git
+	shallow = true
+[submodule "fixtures/material-ui"]
+	path = fixtures/material-ui
+	url = git@github.com:mui/material-ui.git
+	shallow = true
