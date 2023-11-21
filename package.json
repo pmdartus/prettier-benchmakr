@@ -1,0 +1,13 @@
+{
+  "name": "prettier-benchmark",
+  "type": "module",
+  "author": "Pierre-Marie Dartus <pm@dartus.fr>",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "execa": "^8.0.1"
+  },
+  "devDependencies": {
+    "prettier": "^3.1.0"
+  }
+}
