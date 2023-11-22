@@ -1,4 +1,4 @@
-import path from "node:path";
+import path, { format } from "node:path";
 import fs from "node:fs/promises";
 import { Writable } from "node:stream";
 
@@ -8,6 +8,7 @@ import chalk from "chalk";
 import { createLogger } from "./logger.js";
 import { getFixtures } from "./fixtures.js";
 
+const EXIT_CODE_SUCCESS = 0;
 const EXIT_CODE_ERROR = 1;
 
 export async function benchmark(options) {
@@ -38,14 +39,24 @@ export async function benchmark(options) {
     await cleanupDirectory(options.output);
   }
 
+  const results = [];
+
   for (const fixture of fixtures) {
     logger.log(`Running benchmark for "${fixture.name}"`);
-    await runFixture(logger, fixture, options);
+    const result = await benchmarkFixture(logger, fixture, options);
+
+    results.push(result);
   }
+
+  formatResults(logger, results, binaryVersions);
+
+  return EXIT_CODE_SUCCESS;
 }
 
-async function runFixture(logger, fixture, options) {
+async function benchmarkFixture(logger, fixture, options) {
   const args = [];
+
+  args.push("--runs", options.runs);
 
   // Certain fixtures have parsing error. Ignore them.
   args.push("--ignore-failure");
@@ -53,24 +64,30 @@ async function runFixture(logger, fixture, options) {
   // Warm up disk cache and fix formatting error for the given fixture.
   args.push("--warmup", "1");
 
-  args.push("--runs", options.runs);
-
   if (options.verbose) {
     args.push("--show-output");
   } else {
     args.push("--style", "basic");
   }
-  if (options.output) {
-    args.push("--export-json", `${path.resolve(options.output)}/${fixture.name}.json`);
-    args.push("--export-markdown", `${path.resolve(options.output)}/${fixture.name}.md`);
+
+  // Create a temporary directory for storing the benchmark result if no output is specified.
+  const outputDirectory = options.output ?? await fs.mkdtemp(`prettier-benchmark-${fixture.name}`);
+  if (!options.output) {
+    logger.debug("Storing benchmark result in", outputDirectory);
   }
 
+  // Export the result to JSON and Markdown.
+  const jsonFilename = path.resolve(outputDirectory, `${fixture.name}.json`);
+  const markdownFilename = path.resolve(outputDirectory, `${fixture.name}.md`);
+  args.push("--export-json", jsonFilename);
+  args.push("--export-markdown", markdownFilename);
+
+  // Add labels to the result for better visualization.
   args.push(
     `"${options.baseline} ${fixture.options}"`,
     "--command-name",
     "baseline"
   );
-
   if (options.target) {
     args.push(
       `${options.target} ${fixture.options}`,
@@ -78,6 +95,11 @@ async function runFixture(logger, fixture, options) {
       "target"
     );
   }
+
+  const hyperfineOptions = {
+    cwd: fixture.dirname,
+    shell: true,
+  };
 
   // Pipe stdout to process.stdout and format it in gray color.
   const stdoutStream = new Writable({
@@ -87,10 +109,20 @@ async function runFixture(logger, fixture, options) {
     },
   });
 
-  return execa("hyperfine", args, {
-    cwd: fixture.dirname,
-    shell: true,
-  }).pipeStdout(stdoutStream);
+  // Run hyperfine and pipe the output to stdout.
+  await execa("hyperfine", args, hyperfineOptions).pipeStdout(stdoutStream);
+
+  // Read the benchmark from the file system.
+  const rawResult = JSON.parse(await fs.readFile(jsonFilename, "utf8"));
+  const formattedResult = await fs.readFile(markdownFilename, "utf8");
+
+  return {
+    name: fixture.name,
+    results: {
+      raw: rawResult,
+      formatted: formattedResult, 
+    }
+  }
 }
 
 async function getVersions(options) {
