@@ -4,12 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       baseline:
-        description: "Baseline Prettier commit"
-        required: true
+        description: "Baseline Prettier commit or version"
 
       target:
-        description: "Target Prettier commit"
-        required: true
+        description: "Target Prettier commit or version"
 
       runs:
         description: "Number of runs"
@@ -42,6 +40,12 @@ jobs:
         run: |
           wget https://github.com/sharkdp/hyperfine/releases/download/v${{ env.hyperfine_version }}/hyperfine_${{ env.hyperfine_version }}_amd64.deb
           sudo dpkg -i hyperfine_${{ env.hyperfine_version }}_amd64.deb
+
+      - name: Install baseline Prettier
+        run: npm install --no-save prettier-baseline@npm:prettier
+
+      - name: Install target Prettier
+        run: npm install --no-save prettier-target@npm:prettier 
 
       - name: Run benchmark
         run: node ./scripts/benchmark.js --fo
