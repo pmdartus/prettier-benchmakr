@@ -53,6 +53,7 @@ jobs:
 
       - name: Print binary versions
         run: |
+          ls -la node_modules
           $BASELINE_BIN --version
           $TARGET_BIN --version
 
