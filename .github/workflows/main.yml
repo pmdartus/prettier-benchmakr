@@ -42,10 +42,19 @@ jobs:
           sudo dpkg -i hyperfine_${{ env.hyperfine_version }}_amd64.deb
 
       - name: Install baseline Prettier
-        run: npm install --no-save prettier-baseline@npm:prettier
+        run: |
+          npm install --no-save prettier-baseline@npm:prettier
+          echo "BASELINE_BIN=$PWD/node_modules/prettier-baseline/bin/prettier.cjs" >> $GITHUB_ENV
 
       - name: Install target Prettier
-        run: npm install --no-save prettier-target@npm:prettier 
+        run: |
+          npm install --no-save prettier-target@npm:prettier
+          echo "TARGET_BIN=$PWD/node_modules/prettier-target/bin/prettier.cjs" >> $GITHUB_ENV
+
+      - name: Print binary versions
+        run: |
+          $BASELINE_BIN --version
+          $TARGET_BIN --version
 
       - name: Run benchmark
         run: node ./scripts/benchmark.js --fo
