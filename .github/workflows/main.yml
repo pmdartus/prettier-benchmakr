@@ -5,6 +5,7 @@ on:
     inputs:
       baseline:
         description: "Baseline Prettier commit or version"
+        default: "latest"
 
       target:
         description: "Target Prettier commit or version"
@@ -43,12 +44,13 @@ jobs:
 
       - name: Install baseline Prettier
         run: |
-          npm install --no-save prettier-baseline@npm:prettier
+          npm install --no-save prettier-baseline@npm:prettier@${{ inputs.baseline }}
           echo "BASELINE_BIN=$PWD/node_modules/prettier-baseline/bin/prettier.cjs" >> $GITHUB_ENV
 
       - name: Install target Prettier
+        if: ${{ inputs.target }}
         run: |
-          npm install --no-save prettier-target@npm:prettier
+          npm install --no-save prettier-target@npm:prettier@${{ inputs.target }}
           echo "TARGET_BIN=$PWD/node_modules/prettier-target/bin/prettier.cjs" >> $GITHUB_ENV
 
       - name: Print binary versions
