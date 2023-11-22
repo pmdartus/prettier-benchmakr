@@ -58,4 +58,9 @@ jobs:
           ls -la node_modules
 
       - name: Run benchmark
-        run: node ./scripts/benchmark.js --fo
+        run: |
+          node ./scripts/benchmark.js \
+            --baseline ${{ env.BASELINE_BIN }} \
+            ${{ (env.TARGET_BIN && '--target ${{env.TARGET_BIN}}') || '' }} \
+            --runs ${{ inputs.runs }} \
+            vue
