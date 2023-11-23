@@ -59,7 +59,7 @@ jobs:
         if: ${{ inputs.target }}
         run: |
           ./scripts/setup-binary.sh target ${{ inputs.target }}
-          echo "BASELINE_BIN=$PWD/target/bin/prettier.cjs" >> $GITHUB_ENV
+          echo "TARGET_BIN=$PWD/target/bin/prettier.cjs" >> $GITHUB_ENV
 
       - name: Print binary target information
         if: ${{ inputs.target }}
