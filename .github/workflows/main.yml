@@ -45,9 +45,10 @@ jobs:
       - name: Install baseline Prettier
         run: |
           ./scripts/setup-binary.sh baseline ${{ inputs.baseline }}
-          echo "BASELINE_BIN=$PWD/node_modules/prettier-baseline/bin/prettier.cjs" >> $GITHUB_ENV
+          echo "BASELINE_BIN=$PWD/baseline/bin/prettier.cjs" >> $GITHUB_ENV
 
       - name: Print binary baseline information
+        working-directory: "baseline"
         run: |
           echo "Baseline binary: ${{ env.BASELINE_BIN }}"
           echo "Remote origin URL: $(git config --get remote.origin.url)"
@@ -57,11 +58,12 @@ jobs:
       - name: Install target Prettier
         if: ${{ inputs.target }}
         run: |
-          ./scripts/setup-binary.sh target ${{ inputs.baseline }}
-          echo "TARGET_BIN=$PWD/node_modules/prettier-target/bin/prettier.cjs" >> $GITHUB_ENV
+          ./scripts/setup-binary.sh target ${{ inputs.target }}
+          echo "BASELINE_BIN=$PWD/target/bin/prettier.cjs" >> $GITHUB_ENV
 
       - name: Print binary target information
         if: ${{ inputs.target }}
+        working-directory: "target"
         run: |
           echo "Target binary: ${{ env.TARGET_BIN }}"
           echo "Remote origin URL: $(git config --get remote.origin.url)"
