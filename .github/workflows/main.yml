@@ -75,5 +75,5 @@ jobs:
           node ./scripts/benchmark.js \
             --runs ${{ inputs.runs }} \
             --baseline ${{ env.BASELINE_BIN }} \
-            ${{ (env.TARGET_BIN && '--target ${{ env.TARGET_BIN }}') || '' }} \
+            ${{ env.TARGET_BIN && '--target ' + env.TARGET_BIN }} \
             vue
