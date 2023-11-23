@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       baseline:
-        description: "Baseline Prettier commit or version"
-        default: "latest"
+        description: "Baseline Prettier GitHub shorthand"
+        default: "prettier/prettier#main"
 
       target:
-        description: "Target Prettier commit or version"
+        description: "Target Prettier GitHub shorthand"
 
       runs:
         description: "Number of runs"
@@ -44,23 +44,34 @@ jobs:
 
       - name: Install baseline Prettier
         run: |
-          npm install --no-save prettier-baseline@npm:prettier@${{ inputs.baseline }}
+          ./scripts/setup-binary.sh baseline ${{ inputs.baseline }}
           echo "BASELINE_BIN=$PWD/node_modules/prettier-baseline/bin/prettier.cjs" >> $GITHUB_ENV
+
+      - name: Print binary baseline information
+        run: |
+          echo "Baseline binary: ${{ env.BASELINE_BIN }}"
+          echo "Remote origin URL: $(git config --get remote.origin.url)"
+          echo "Commit hash: $(git rev-parse HEAD)"
+          echo "Branch name: $(git rev-parse --abbrev-ref HEAD)"
 
       - name: Install target Prettier
         if: ${{ inputs.target }}
         run: |
-          npm install --no-save prettier-target@npm:prettier@${{ inputs.target }}
+          ./scripts/setup-binary.sh target ${{ inputs.baseline }}
           echo "TARGET_BIN=$PWD/node_modules/prettier-target/bin/prettier.cjs" >> $GITHUB_ENV
 
-      - name: Print binary versions
+      - name: Print binary target information
+        if: ${{ inputs.target }}
         run: |
-          ls -la node_modules
+          echo "Target binary: ${{ env.TARGET_BIN }}"
+          echo "Remote origin URL: $(git config --get remote.origin.url)"
+          echo "Commit hash: $(git rev-parse HEAD)"
+          echo "Branch name: $(git rev-parse --abbrev-ref HEAD)"
 
       - name: Run benchmark
         run: |
           node ./scripts/benchmark.js \
-            --baseline ${{ env.BASELINE_BIN }} \
-            ${{ (env.TARGET_BIN && '--target ${{env.TARGET_BIN}}') || '' }} \
             --runs ${{ inputs.runs }} \
+            --baseline ${{ env.BASELINE_BIN }} \
+            ${{ (env.TARGET_BIN && '--target ${{ env.TARGET_BIN }}') || '' }} \
             vue
