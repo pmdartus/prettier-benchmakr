@@ -4,24 +4,23 @@ on:
   workflow_dispatch:
     inputs:
       baseline:
-        description: "Baseline Prettier commit"
-        required: true
+        description: "Baseline Prettier GitHub shorthand"
+        default: "prettier/prettier#main"
 
       target:
-        description: "Target Prettier commit"
-        required: true
+        description: "Target Prettier GitHub shorthand"
 
       runs:
         description: "Number of runs"
         required: true
-        default: 10
+        default: "10"
 
 env:
   node_version: 20
   hyperfine_version: 1.16.1
 
 jobs:
-  build:
+  benchmark:
     runs-on: ubuntu-latest
 
     steps:
@@ -43,5 +42,38 @@ jobs:
           wget https://github.com/sharkdp/hyperfine/releases/download/v${{ env.hyperfine_version }}/hyperfine_${{ env.hyperfine_version }}_amd64.deb
           sudo dpkg -i hyperfine_${{ env.hyperfine_version }}_amd64.deb
 
+      - name: Install baseline Prettier
+        run: |
+          ./scripts/setup-binary.sh baseline ${{ inputs.baseline }}
+          echo "BASELINE_BIN=$PWD/baseline/bin/prettier.cjs" >> $GITHUB_ENV
+
+      - name: Print binary baseline information
+        working-directory: "baseline"
+        run: |
+          echo "Baseline binary: ${{ env.BASELINE_BIN }}"
+          echo "Remote origin URL: $(git config --get remote.origin.url)"
+          echo "Commit hash: $(git rev-parse HEAD)"
+          echo "Branch name: $(git rev-parse --abbrev-ref HEAD)"
+
+      - name: Install target Prettier
+        if: ${{ inputs.target }}
+        run: |
+          ./scripts/setup-binary.sh target ${{ inputs.target }}
+          echo "TARGET_BIN=$PWD/target/bin/prettier.cjs" >> $GITHUB_ENV
+
+      - name: Print binary target information
+        if: ${{ inputs.target }}
+        working-directory: "target"
+        run: |
+          echo "Target binary: ${{ env.TARGET_BIN }}"
+          echo "Remote origin URL: $(git config --get remote.origin.url)"
+          echo "Commit hash: $(git rev-parse HEAD)"
+          echo "Branch name: $(git rev-parse --abbrev-ref HEAD)"
+
       - name: Run benchmark
-        run: node ./scripts/benchmark.js --fo
+        run: |
+          node ./scripts/benchmark.js \
+            --runs ${{ inputs.runs }} \
+            --baseline ${{ env.BASELINE_BIN }} \
+            ${{ env.TARGET_BIN && format('--target {0}', env.TARGET_BIN) }} \
+            vue

@@ -25,6 +25,7 @@ export async function benchmark(options) {
     return EXIT_CODE_ERROR;
   }
 
+  // Get binary versions before running the benchmark.
   let binaryVersions;
   try {
     logger.debug("Getting binary versions");
@@ -71,7 +72,8 @@ async function benchmarkFixture(logger, fixture, options) {
   }
 
   // Create a temporary directory for storing the benchmark result if no output is specified.
-  const outputDirectory = options.output ?? await fs.mkdtemp(`prettier-benchmark-${fixture.name}`);
+  const outputDirectory =
+    options.output ?? (await fs.mkdtemp(`prettier-benchmark-${fixture.name}`));
   if (!options.output) {
     logger.debug("Storing benchmark result in", outputDirectory);
   }
@@ -83,17 +85,12 @@ async function benchmarkFixture(logger, fixture, options) {
   args.push("--export-markdown", markdownFilename);
 
   // Add labels to the result for better visualization.
-  args.push(
-    `"${options.baseline} ${fixture.options}"`,
-    "--command-name",
-    "baseline"
-  );
+  args.push(`"${options.baseline} ${fixture.options}"`);
+  args.push("--command-name", "baseline");
+
   if (options.target) {
-    args.push(
-      `${options.target} ${fixture.options}`,
-      "--command-name",
-      "target"
-    );
+    args.push(`"${options.target} ${fixture.options}"`);
+    args.push("--command-name", "target");
   }
 
   const hyperfineOptions = {
@@ -120,9 +117,9 @@ async function benchmarkFixture(logger, fixture, options) {
     name: fixture.name,
     results: {
       raw: rawResult,
-      formatted: formattedResult, 
-    }
-  }
+      formatted: formattedResult,
+    },
+  };
 }
 
 async function getVersions(options) {
