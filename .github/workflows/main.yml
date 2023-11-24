@@ -44,7 +44,7 @@ jobs:
 
       - name: Install baseline Prettier
         run: |
-          ./scripts/setup-binary.sh baseline ${{ inputs.baseline }}
+          ./scripts/setup-prettier.sh baseline ${{ inputs.baseline }}
           echo "BASELINE_BIN=$PWD/baseline/bin/prettier.cjs" >> $GITHUB_ENV
 
       - name: Print binary baseline information
@@ -58,7 +58,7 @@ jobs:
       - name: Install target Prettier
         if: ${{ inputs.target }}
         run: |
-          ./scripts/setup-binary.sh target ${{ inputs.target }}
+          ./scripts/setup-prettier.sh target ${{ inputs.target }}
           echo "TARGET_BIN=$PWD/target/bin/prettier.cjs" >> $GITHUB_ENV
 
       - name: Print binary target information
