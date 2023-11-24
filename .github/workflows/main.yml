@@ -13,14 +13,14 @@ on:
       runs:
         description: "Number of runs"
         required: true
-        default: 10
+        default: "10"
 
 env:
   node_version: 20
   hyperfine_version: 1.16.1
 
 jobs:
-  build:
+  benchmark:
     runs-on: ubuntu-latest
 
     steps:
@@ -75,5 +75,5 @@ jobs:
           node ./scripts/benchmark.js \
             --runs ${{ inputs.runs }} \
             --baseline ${{ env.BASELINE_BIN }} \
-            ${{ env.TARGET_BIN && '--target ' + env.TARGET_BIN }} \
+            ${{ env.TARGET_BIN && format('--target {0}', env.TARGET_BIN) }} \
             vue
