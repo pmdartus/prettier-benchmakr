@@ -69,7 +69,7 @@ async function benchmarkFixture(fixture, config) {
   args.push("--export-json", resultFilename);
 
   for (const binary of config.binaries) {
-    args.push(`"${binary.filename} ${fixture.options}"`);
+    args.push(`"${path.resolve(binary.filename)} ${fixture.options}"`);
     args.push("--command-name", binary.name);
   }
 
