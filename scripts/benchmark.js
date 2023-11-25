@@ -1,4 +1,5 @@
-import path from "node:path";
+#! /usr/bin/env node
+
 import { parseArgs } from "node:util";
 
 import { benchmark } from '../src/benchmark.js';
@@ -9,6 +10,10 @@ const options = {
   },
   target: {
     type: "string",
+  },
+  warmup: {
+    type: "string",
+    default: "1",
   },
   runs: {
     type: "string",
@@ -21,7 +26,13 @@ const options = {
   output: {
     short: "o",
     type: "string",
-  }
+  },
+  "export-json": {
+    type: "string",
+  },
+  "export-markdown": {
+    type: "string",
+  },
 };
 
 function parseArguments() {
@@ -35,12 +46,15 @@ function parseArguments() {
   });
 
   return {
+    fixture: positionals[0],
     runs: Number(values.runs),
+    warmup: Number(values.warmup),
     baseline: values.baseline,
     target: values.target,
-    fixture: positionals[0],
     verbose: values.verbose,
     output: values.output,
+    exportJson: values["export-json"],
+    exportMarkdown: values["export-markdown"],
   };
 }
 

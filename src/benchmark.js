@@ -1,4 +1,5 @@
-import path, { format } from "node:path";
+import os from "node:os";
+import path from "node:path";
 import fs from "node:fs/promises";
 import { Writable } from "node:stream";
 
@@ -7,6 +8,7 @@ import chalk from "chalk";
 
 import { createLogger } from "./logger.js";
 import { getFixtures } from "./fixtures.js";
+import * as format from "./format.js";
 
 const EXIT_CODE_SUCCESS = 0;
 const EXIT_CODE_ERROR = 1;
@@ -25,72 +27,50 @@ export async function benchmark(options) {
     return EXIT_CODE_ERROR;
   }
 
-  // Get binary versions before running the benchmark.
-  let binaryVersions;
-  try {
-    logger.debug("Getting binary versions");
-    binaryVersions = await getVersions(options);
-  } catch (error) {
-    logger.error(error.message);
-    return EXIT_CODE_ERROR;
-  }
-
-  if (options.output) {
-    logger.debug(`Cleaning up "${options.output}"`);
-    await cleanupDirectory(options.output);
-  }
+  const config = await createConfig(options);
 
   const results = [];
 
   for (const fixture of fixtures) {
     logger.log(`Running benchmark for "${fixture.name}"`);
-    const result = await benchmarkFixture(logger, fixture, options);
 
+    const result = await benchmarkFixture(fixture, config);
     results.push(result);
   }
 
-  formatResults(logger, results, binaryVersions);
+  await exportReport(logger, options, {
+    config,
+    benchmarks: results,
+  });
 
   return EXIT_CODE_SUCCESS;
 }
 
-async function benchmarkFixture(logger, fixture, options) {
+async function benchmarkFixture(fixture, config) {
   const args = [];
 
-  args.push("--runs", options.runs);
+  args.push("--runs", config.runs);
+  args.push("--warmup", config.warmup);
 
   // Certain fixtures have parsing error. Ignore them.
   args.push("--ignore-failure");
 
-  // Warm up disk cache and fix formatting error for the given fixture.
-  args.push("--warmup", "1");
-
-  if (options.verbose) {
+  if (config.verbose) {
     args.push("--show-output");
   } else {
     args.push("--style", "basic");
   }
 
-  // Create a temporary directory for storing the benchmark result if no output is specified.
-  const outputDirectory =
-    options.output ?? (await fs.mkdtemp(`prettier-benchmark-${fixture.name}`));
-  if (!options.output) {
-    logger.debug("Storing benchmark result in", outputDirectory);
-  }
+  // Export the result to JSON.
+  const resultFilename = path.resolve(
+    config.outputDirectory,
+    `${fixture.name}.json`
+  );
+  args.push("--export-json", resultFilename);
 
-  // Export the result to JSON and Markdown.
-  const jsonFilename = path.resolve(outputDirectory, `${fixture.name}.json`);
-  const markdownFilename = path.resolve(outputDirectory, `${fixture.name}.md`);
-  args.push("--export-json", jsonFilename);
-  args.push("--export-markdown", markdownFilename);
-
-  // Add labels to the result for better visualization.
-  args.push(`"${options.baseline} ${fixture.options}"`);
-  args.push("--command-name", "baseline");
-
-  if (options.target) {
-    args.push(`"${options.target} ${fixture.options}"`);
-    args.push("--command-name", "target");
+  for (const binary of config.binaries) {
+    args.push(`"${binary.filename} ${fixture.options}"`);
+    args.push("--command-name", binary.name);
   }
 
   const hyperfineOptions = {
@@ -110,49 +90,79 @@ async function benchmarkFixture(logger, fixture, options) {
   await execa("hyperfine", args, hyperfineOptions).pipeStdout(stdoutStream);
 
   // Read the benchmark from the file system.
-  const rawResult = JSON.parse(await fs.readFile(jsonFilename, "utf8"));
-  const formattedResult = await fs.readFile(markdownFilename, "utf8");
+  const results = JSON.parse(await fs.readFile(resultFilename, "utf8"));
 
   return {
     name: fixture.name,
-    results: {
-      raw: rawResult,
-      formatted: formattedResult,
-    },
+    args,
+    ...results,
   };
 }
 
-async function getVersions(options) {
-  let hyperfine = await getBinaryVersion("hyperfine");
-  hyperfine = hyperfine.replace(/^hyperfine /, "");
+async function createConfig(options) {
+  const binaries = [];
 
-  const baseline = await getBinaryVersion(options.baseline);
-  const target = options.target ? await getBinaryVersion(options.target) : null;
+  const prefix = path.resolve(os.tmpdir(), "prettier-benchmark");
+  const outputDirectory = await fs.mkdtemp(prefix);
+
+  const baselineConfig = await getBinaryConfig({
+    name: "baseline",
+    filename: options.baseline,
+  });
+  binaries.push(baselineConfig);
+
+  if (options.target) {
+    const targetConfig = await getBinaryConfig({
+      name: "target",
+      filename: options.target,
+    });
+    binaries.push(targetConfig);
+  }
 
   return {
-    hyperfine,
-    baseline,
-    target,
+    runs: options.runs,
+    warmup: options.warmup,
+    verbose: options.verbose,
+    outputDirectory,
+    binaries,
   };
 }
 
-async function getBinaryVersion(bin) {
+async function getBinaryConfig({ name, filename }) {
+  let version;
   try {
-    const result = await execa(bin, ["--version"]);
-    return result.stdout.trim();
+    const result = await execa(filename, ["--version"]);
+    version = result.stdout.trim();
   } catch (error) {
-    throw new Error(`Failed to get version for "${bin}"`, {
+    throw new Error(`Failed to get version for "${filename}"`, {
       cause: error,
     });
   }
+
+  return {
+    name,
+    filename,
+    version,
+  };
 }
 
-async function cleanupDirectory(dirname) {
-  try {
-    await fs.rm(dirname, { recursive: true });
-  } catch {
-    // Ignore if missing
+async function exportReport(logger, options, report) {
+  if (options.exportJson) {
+    const output = format.toJson(report);
+
+    logger.debug("Exporting result to", options.exportJson);
+
+    await fs.mkdir(path.dirname(options.exportJson), { recursive: true });
+    await fs.writeFile(options.exportJson, output, "utf8");
   }
 
-  return fs.mkdir(dirname, { recursive: true });
+  if (options.exportMarkdown) {
+    const output = format.toMarkdown(report);
+
+    logger.debug("Exporting result to", options.exportMarkdown);
+
+    await fs.mkdir(path.dirname(options.exportMarkdown), { recursive: true });
+    await fs.writeFile(options.exportMarkdown, output, "utf8");
+  }
 }
+

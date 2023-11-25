@@ -34,7 +34,10 @@ $ ./scripts/setup-prettier.sh baseline "prettier/prettier#main"
 
 - `--baseline <filename>`: The baseline Prettier CLI filename. (required)
 - `--target <filename>`: The target Prettier CLI filename.
-- `--runs <number>`: Number of iteration to perform for each benchmark. (default: `10`)
+- `--runs <number>`: Number of iteration to perform for each command. (default: `10`)
+- `--warmup <number>`: Number of iteration used to warmup the command. (default: `1`)
+- `--export-json <filename>`: Export benchmark results as JSON to the `filename`.
+- `--export-markdown <filename>`: Export benchmark results as markdown to the `filename`.
 - `--verbose`: Print debug logs and Prettier CLI output.
 
 **Example:**
